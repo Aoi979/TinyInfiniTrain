@@ -108,6 +108,11 @@ Tokenizer::Tokenizer(const std::string &filepath) {
 
         token_table_[i] = std::string(buffer.data(), token_len);
     }
+    for (int i = 0; i < 20; i++) {
+        std::cout << "Token[" << i << "] = len=" << (int)token_table_[i].size()
+                  << " str=" << token_table_[i] << std::endl;
+    }
+
 }
 
 std::string Tokenizer::Decode(uint32_t token_id) const {
@@ -140,7 +145,7 @@ void Tokenizer::GenerateText(infini_train::nn::Module &model, uint32_t batch_siz
     std::cout << "The meaning of life is";
     // device
     auto x = std::make_shared<Tensor>(x_tensor.To(device));
-    uint64_t kRngState;
+    uint64_t kRngState = std::chrono::steady_clock::now().time_since_epoch().count();
     LOG(INFO) << "start generate text:";
     // init default device(CPU0)
     auto cpu_device = Device{};
@@ -159,7 +164,7 @@ void Tokenizer::GenerateText(infini_train::nn::Module &model, uint32_t batch_siz
         auto probs_cpu = std::make_shared<Tensor>(probs_device->To(cpu_device));
         auto probs = static_cast<float *>(probs_cpu->DataPtr()) + (t - 1) * logits->Dims()[2];
         auto coin = RandomF32(kRngState);
-        auto next = SampleMult(probs, logits->Dims()[2], coin);
+         auto next = SampleMult(probs, logits->Dims()[2], coin);
         // host
         x = std::make_shared<infini_train::Tensor>(x->To(cpu_device));
         auto add = static_cast<int64_t *>(x->DataPtr());
