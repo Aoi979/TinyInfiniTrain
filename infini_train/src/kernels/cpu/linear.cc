@@ -12,24 +12,91 @@
 namespace infini_train::kernels::cpu {
 std::shared_ptr<Tensor> MatmulForward(const std::shared_ptr<Tensor> &input, const std::shared_ptr<Tensor> &other) {
     // =================================== 作业 ===================================
-    // TODO：实现CPU上的矩阵乘法前向计算
+    // FINISHED：实现CPU上的矩阵乘法前向计算
     // REF:
     // =================================== 作业 ===================================
+    const auto &input_dims = input->Dims();
+    const auto &other_dims = other->Dims();
 
-    auto output = std::make_shared<Tensor>();
-    return {output};
+    assert(input_dims.size() >= 2 && other_dims.size() >= 2);
+    assert(input_dims.size() == other_dims.size());
+
+    const int64_t m = input_dims[input_dims.size() - 2];
+    const int64_t k = input_dims[input_dims.size() - 1];
+    const int64_t k2 = other_dims[other_dims.size() - 2];
+    const int64_t n = other_dims[other_dims.size() - 1];
+    assert(k == k2);
+
+    // batch size
+    const int64_t bs = std::accumulate(input_dims.begin(), input_dims.end() - 2, 1LL, std::multiplies<int64_t>{});
+    for (size_t i = 0; i < input_dims.size() - 2; ++i) {
+        assert(input_dims[i] == other_dims[i]);
+    }
+
+    std::vector<int64_t> output_dims = input_dims;
+    output_dims[output_dims.size() - 1] = n;
+    auto output = std::make_shared<Tensor>(output_dims, DataType::kFLOAT32);
+
+    using RowMajorMap = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
+    using ConstRowMajorMap = Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
+
+    if (bs == 1) {
+        ConstRowMajorMap A(static_cast<const float *>(input->DataPtr()), m, k);
+        ConstRowMajorMap B(static_cast<const float *>(other->DataPtr()), k, n);
+        RowMajorMap C(static_cast<float *>(output->DataPtr()), m, n);
+        C.noalias() = A * B;
+    } else {
+        for (int64_t b = 0; b < bs; ++b) {
+            ConstRowMajorMap A(static_cast<const float *>(input->DataPtr()) + b * m * k, m, k);
+            ConstRowMajorMap B(static_cast<const float *>(other->DataPtr()) + b * k * n, k, n);
+            RowMajorMap C(static_cast<float *>(output->DataPtr()) + b * m * n, m, n);
+            C.noalias() = A * B;
+        }
+    }
+
+    return output;
 }
 
 std::tuple<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>>
 MatmulBackward(const std::shared_ptr<Tensor> &input, const std::shared_ptr<Tensor> &other,
                const std::shared_ptr<Tensor> &grad_output) {
     // =================================== 作业 ===================================
-    // TODO：实现CPU上的矩阵乘法反向传播
+    // FINISHED：实现CPU上的矩阵乘法反向传播
     // REF:
     // =================================== 作业 ===================================
 
-    auto grad_input = std::make_shared<Tensor>();
-    auto grad_other = std::make_shared<Tensor>();
+    // input:  (m, k)
+    // other:  (k, n)
+    // output: (m, n)  => grad_output 同形状
+
+    const auto in_dims  = input->Dims();
+    const auto w_dims   = other->Dims();
+    const auto go_dims  = grad_output->Dims();
+
+    CHECK_EQ(in_dims.size(), 2);
+    CHECK_EQ(w_dims.size(), 2);
+    CHECK_EQ(go_dims.size(), 2);
+
+    const int64_t m = in_dims[0];
+    const int64_t k = in_dims[1];
+    CHECK_EQ(w_dims[0], k);
+    const int64_t n = w_dims[1];
+
+    CHECK_EQ(go_dims[0], m);
+    CHECK_EQ(go_dims[1], n);
+
+    std::vector<int64_t> grad_input_dims = {m, k};
+    std::vector<int64_t> grad_other_dims = {k, n};
+
+    auto grad_input = std::make_shared<Tensor>(grad_input_dims, DataType::kFLOAT32);
+    auto grad_other = std::make_shared<Tensor>(grad_other_dims, DataType::kFLOAT32);
+
+    grad_input->EigenMatrix() =
+        grad_output->EigenMatrix() * other->EigenMatrix().transpose();
+
+    grad_other->EigenMatrix() =
+        input->EigenMatrix().transpose() * grad_output->EigenMatrix();
+
     return {grad_input, grad_other};
 }
 

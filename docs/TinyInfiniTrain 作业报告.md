@@ -37,7 +37,6 @@ std::vector<std::shared_ptr<Tensor>> Neg::Backward(const std::vector<std::shared
 #### 遇到问题
 
 
-
 ### 作业二：实现矩阵乘法
 
 难度：⭐⭐
@@ -70,7 +69,7 @@ std::vector<std::shared_ptr<Tensor>> Neg::Backward(const std::vector<std::shared
 
 对应测例：`TEST(MatmulTest, BasicMatrixMultiplyCuda)`,`TEST(MatmulTest, BatchedMatrixMultiplyCuda)`,`TEST(MatmulTest, BackwardPassCuda)`
 
-需要实现的代码块位置：`infini_train/src/kernels/cuda/linear.cu`
+需要实现的代码块位置：`infini_train/src/kernels/cuda/lindear.cu`
 
 ```c++
     std::shared_ptr<Tensor> MatmulForward(const std::shared_ptr<Tensor> &input, const std::shared_ptr<Tensor> &other) {

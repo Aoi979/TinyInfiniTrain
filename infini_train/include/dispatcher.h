@@ -7,7 +7,7 @@
 
 #include "glog/logging.h"
 
-#include "infini_train/include/device.h"
+#include "device.h"
 
 namespace infini_train {
 class KernelFunction {
@@ -16,12 +16,13 @@ public:
 
     template <typename RetT, class... ArgsT> RetT Call(ArgsT... args) const {
         // =================================== 作业 ===================================
-        // TODO：实现通用kernel调用接口
+        // FINISHED：实现通用kernel调用接口
         // 功能描述：将存储的函数指针转换为指定类型并调用
         // =================================== 作业 ===================================
 
         using FuncT = RetT (*)(ArgsT...);
-        // TODO: 实现函数调用逻辑
+        auto f = reinterpret_cast<FuncT>(func_ptr_);
+        return f(std::forward<ArgsT>(args)...);
     }
 
 private:
@@ -45,9 +46,12 @@ public:
 
     template <typename FuncT> void Register(const KeyT &key, FuncT &&kernel) {
         // =================================== 作业 ===================================
-        // TODO：实现kernel注册机制
+        // FINISHED：实现kernel注册机制
         // 功能描述：将kernel函数与设备类型、名称绑定
         // =================================== 作业 ===================================
+        auto [it, inserted] = key_to_kernel_map_.emplace(key, KernelFunction(std::forward<FuncT>(kernel)));
+        CHECK(inserted) << "Kernel already registered: " << key.second
+                        << " on device: " << static_cast<int>(key.first);
     }
 
 private:
@@ -55,8 +59,14 @@ private:
 };
 } // namespace infini_train
 
-#define REGISTER_KERNEL(device, kernel_name, kernel_func)                                                              \
+struct KernelRegister {
+    KernelRegister(infini_train::DeviceType device, const std::string &name, auto func) {
+        infini_train::Dispatcher::Instance().Register({device, name}, func);
+    }
+};
+#define REGISTER_KERNEL(device, kernel_name, kernel_func) \
+static KernelRegister _##kernel_name##_reg(device, #kernel_name, kernel_func);
     // =================================== 作业 ===================================
-    // TODO：实现自动注册宏
+    // FINISHED：实现自动注册宏
     // 功能描述：在全局静态区注册kernel，避免显式初始化代码
     // =================================== 作业 ===================================

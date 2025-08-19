@@ -279,11 +279,26 @@ std::shared_ptr<Tensor> Tensor::Contiguous() {
 std::shared_ptr<Tensor> Tensor::Flatten(int64_t start, int64_t end) {
     // return Contiguous()->View(new_shape);
     // =================================== 作业 ===================================
-    // TODO：实现张量扁平化操作，将指定维度范围[start, end]内的所有维度合并为一个维度
+    // FINISHED：实现张量扁平化操作，将指定维度范围[start, end]内的所有维度合并为一个维度
     // HINT:
     // =================================== 作业 ===================================
+    if (end == -1) end = dims_.size() - 1;
+    CHECK_GE(start, 0);
+    CHECK_LT(start, dims_.size());
+    CHECK_GE(end, start);
+    CHECK_LT(end, dims_.size());
 
-    return std::make_shared<Tensor>();
+    std::vector<int64_t> new_dims;
+    int64_t flattened_dim = 1;
+    for (int i = 0; i < dims_.size(); ++i) {
+        if (i >= start && i <= end) {
+            flattened_dim *= dims_[i];
+            if (i == end) new_dims.push_back(flattened_dim);
+        } else {
+            new_dims.push_back(dims_[i]);
+        }
+    }
+    return Contiguous()->View(new_dims);
 }
 
 std::shared_ptr<Tensor> Tensor::Squeeze(int64_t dim) {
@@ -355,9 +370,24 @@ std::shared_ptr<Tensor> Tensor::RequiresGrad() {
 
 void Tensor::Backward(std::shared_ptr<Tensor> gradient, bool retain_graph, bool create_graph) const {
     // =================================== 作业 ===================================
-    // TODO：实现自动微分反向传播
+    // FINISHED：实现自动微分反向传播
     // 功能描述：1. 计算当前张量对叶子节点的梯度    2. 支持多输出场景的梯度累加
     // =================================== 作业 ===================================
+    if (grad_fn_) {
+        if (gradient) {
+            CHECK_EQ(static_cast<int>(GetDevice().Type()), static_cast<int>(gradient->GetDevice().Type()));
+            CHECK_EQ(dims_.size(), gradient->Dims().size());
+            CHECK_EQ(static_cast<int8_t>(dtype_),static_cast<int8_t>(gradient->dtype_));
+            for (int i = 0; i< dims_.size(); ++i) {
+                CHECK_EQ(dims_[i], gradient->Dims()[i]);
+            }
+        }else {
+            CHECK_EQ(dims_.size(), 0);
+            gradient = std::make_shared<Tensor>(std::vector<int64_t>{}, dtype_, GetDevice());
+            gradient->Fill<float>(1.0f);
+        }
+        grad_fn_->BackwardPartial(gradient,output_idx_);
+    }
 }
 
 void Tensor::ZeroGrad() {

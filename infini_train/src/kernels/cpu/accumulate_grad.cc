@@ -15,9 +15,25 @@ void AdamAccumulateGrad(const std::shared_ptr<Tensor> &grad, const std::shared_p
                         const std::shared_ptr<Tensor> &m, const std::shared_ptr<Tensor> &v, float learning_rate,
                         float beta1, float beta2, float eps, int64_t t) {
     // =================================== 作业 ===================================
-    // TODO：实现Adam优化器的梯度累积和参数更新
+    // FINISHED：实现Adam优化器的梯度累积和参数更新
     // REF:
     // =================================== 作业 ===================================
+
+    auto grad_data = static_cast<float*>(grad->DataPtr());
+    auto param_data = static_cast<float*>(param->DataPtr());
+    auto m_data = static_cast<float*>(m->DataPtr());
+    auto v_data = static_cast<float*>(v->DataPtr());
+
+    float beta1_t = std::pow(beta1, t);
+    float beta2_t = std::pow(beta2, t);
+
+    for (int64_t idx = 0; idx < grad->NumElements(); ++idx) {
+        m_data[idx] = beta1 * m_data[idx] + (1.0f - beta1) * grad_data[idx];
+        v_data[idx] = beta2 * v_data[idx] + (1.0f - beta2) * grad_data[idx] * grad_data[idx];
+        float m_hat = m_data[idx] / (1.0f - beta1_t);
+        float v_hat = v_data[idx] / (1.0f - beta2_t);
+        param_data[idx] -= learning_rate * m_hat / (std::sqrt(v_hat) + eps);
+    }
 }
 
 } // namespace infini_train::kernels::cpu

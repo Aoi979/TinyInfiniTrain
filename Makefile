@@ -8,11 +8,11 @@ CMAKE_OPT += -DUSE_CUDA=$(USE_CUDA)
 
 build:
 	mkdir -p build/$(TYPE)
-	cd build/$(TYPE) && cmake $(CMAKE_OPT) ../.. && make -j8
+	cd build/$(TYPE) && cmake -G Ninja $(CMAKE_OPT) ../.. && ninja -j8
 
 clean:
 	rm -rf build
 
 test-cpp:
 	@echo
-	cd build/$(TYPE) && make test
+	cd build/$(TYPE) && ninja test
